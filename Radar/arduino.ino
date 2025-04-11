@@ -29,6 +29,7 @@ int misuraDistanza() {
 void setup() {
   myservo.attach(9);  // pin di connessione alla scheda
   Serial.begin(9600);
+  myservo.write(15);
 }
 
 void loop() {
