@@ -5,8 +5,8 @@ Servo myservo;  // definisci il servo
 int pos = 0;    // posizione servo
 
 // variabili sensore ultrasuoni
-const int trigPin = 9; 
-const int echoPin = 10;
+const int trigPin = 12; 
+const int echoPin = 13;
 float duration;
 float distance;
 
@@ -30,6 +30,8 @@ void setup() {
   myservo.attach(9);  // pin di connessione alla scheda
   Serial.begin(9600);
   myservo.write(15);
+  pinMode(trigPin, OUTPUT);   
+  pinMode(echoPin, INPUT);    
 }
 
 void loop() {
