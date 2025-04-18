@@ -2,3 +2,5 @@ RADAR
   - servo
   - sens. ultrasuoni
   - supporto
+ECOSCANDAGLIO
+  - sens. ultrasuoni
