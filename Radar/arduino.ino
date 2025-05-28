@@ -12,26 +12,32 @@ float distance;
 
 
 int misuraDistanza() {
-    digitalWrite(trigPin, LOW); // stringa di inizializzazione
-    delayMicroseconds(2);
-    digitalWrite(trigPin, HIGH);	// impulso
-    delayMicroseconds(10);
-    digitalWrite(trigPin, LOW); // fine impulso
-    duration = pulseIn(echoPin, HIGH); // Misura per quanto tempo echoPin rimane HIGH, quindi durata del ritorno
-    distance = (duration * 0.034) / 2;
-    delay(100);
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(4);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH, 30000); // Timeout 30ms
+  
+  if (duration <= 0) {
+    Serial.print(pos);
+    Serial.print(",ERRORE."); // Marcatore di errore (il tempo di ritorno non pouo essere pari o minore di 0)
+  } else {
+    distance = (duration * 0.0343) / 2;
     Serial.print(pos);
     Serial.print(",");
-    Serial.print(distance);
+    Serial.print(distance, 0); // rendi la misura un intero per facilitare la lettura da parte di processing
     Serial.print(".");
+  }
+  delay(50); 
 }
 
 void setup() {
-  myservo.attach(9);  // pin di connessione alla scheda
+  myservo.attach(9);  // pin di connessione alla scheda del servo
   Serial.begin(9600);
-  myservo.write(15);
-  pinMode(trigPin, OUTPUT);   
-  pinMode(echoPin, INPUT);    
+  myservo.write(15); // direzione di start per il servo
+  pinMode(trigPin, OUTPUT); 
+  pinMode(echoPin, INPUT);  
 }
 
 void loop() {
