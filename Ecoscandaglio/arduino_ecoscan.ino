@@ -1,5 +1,5 @@
-const int trigPin = 9;
-const int echoPin = 10;
+const int trigPin = 12;
+const int echoPin = 13;
 
 
 float duration; // tempo tra invio e ritorno del segnale
