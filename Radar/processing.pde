@@ -1,139 +1,169 @@
-import processing.serial.*; // imports library for serial communication
-import java.awt.event.KeyEvent; // imports library for reading the data from the serial port
-import java.io.IOException;
-Serial myPort; // defines Object Serial
-// defubes variables
-String angle="";
-String distance="";
-String data="";
-String noObject;
-float pixsDistance;
-int iAngle, iDistance;
-int index1=0;
-int index2=0;
-PFont orcFont;
+import processing.serial.*;
+
+Serial myPort;
+String angle = "", distance = "";
+int iAngle = 0, iDistance = 0;
+boolean connected = false;
+ArrayList<PVector> objectHistory = new ArrayList<PVector>();
+
 void setup() {
-
-  size (1200, 700); // ***CHANGE THIS TO YOUR SCREEN RESOLUTION***
+  size(1280, 720);
   smooth();
-  myPort = new Serial(this, "COM7", 9600); // starts the serial communication
-  myPort.bufferUntil('.'); // reads the data from the serial port up to the character '.'. So actually it reads this: angle,distance.
+  textSize(16);
+  
+  // INSERISCI MANUALMENTE LA PORTA CORRETTA QUI SOSTITUENDO "COM5"
+  try {
+    myPort = new Serial(this, "COM6", 9600); // <-- MODIFICA QUESTA RIGA
+    myPort.bufferUntil('.');
+    connected = true;
+    println("Connessione riuscita a: COM5"); // <-- MODIFICA ANCHE QUESTA RIGA
+  } catch (Exception e) {
+    println("Errore di connessione: " + e.getMessage());
+    connected = false;
+  }
 }
+
 void draw() {
-
-  fill(98, 245, 31);
-  // simulating motion blur and slow fade of the moving line
+  if (!connected) {
+    background(0);
+    fill(255, 0, 0);
+    text("DISCONNESSO - Verificare la connessione seriale", width/2 - 200, height/2);
+    return;
+  }
+  
+  // Sfondo con effetto fade leggero
   noStroke();
-  fill(0, 4); 
-  rect(0, 0, width, height-height*0.065); 
-
-  fill(98, 245, 31); // green color
-  // calls the functions for drawing the radar
-  drawRadar(); 
+  fill(0, 15); 
+  rect(0, 0, width, height);
+  
+  // Disegno elementi radar
+  drawRadar();
+  drawHistory(); // Disegna la traccia storica
   drawLine();
   drawObject();
   drawText();
+  
+  // Debug overlay
+  fill(255);
+  text("Angolo: " + iAngle + "° - Distanza: " + iDistance + "cm", 20, 30);
 }
-void serialEvent (Serial myPort) { // starts reading data from the Serial Port
-  // reads the data from the Serial Port up to the character '.' and puts it into the String variable "data".
-  data = myPort.readStringUntil('.');
-  data = data.substring(0, data.length()-1);
 
-  index1 = data.indexOf(","); // find the character ',' and puts it into the variable "index1"
-  angle= data.substring(0, index1); // read the data from position "0" to position of the variable index1 or thats the value of the angle the Arduino Board sent into the Serial Port
-  distance= data.substring(index1+1, data.length()); // read the data from position "index1" to the end of the data pr thats the value of the distance
-
-  // converts the String variables into Integer
-  iAngle = int(angle);
-  iDistance = int(distance);
+void serialEvent(Serial port) {
+  try {
+    String rawData = port.readStringUntil('.').trim();
+    
+    if (rawData == null || rawData.isEmpty()) return;
+    
+    // Parsing dati
+    String[] parts = splitTokens(rawData, ",");
+    if (parts.length == 2) {
+      angle = parts[0].trim();
+      distance = parts[1].replace(".", "").trim();
+      
+      try {
+        iAngle = constrain(int(angle), 0, 180);
+        iDistance = int(distance);
+        if (iDistance > 0 && iDistance < 500) { // Filtra valori non validi
+          // Aggiungi alla storia in modo sicuro
+          float x = width/2 + cos(radians(iAngle)) * iDistance * 2;
+          float y = height - 100 - sin(radians(iAngle)) * iDistance * 2;
+          synchronized(objectHistory) {
+            objectHistory.add(new PVector(x, y));
+            if (objectHistory.size() > 100) {
+              objectHistory.remove(0);
+            }
+          }
+        }
+      } catch (NumberFormatException e) {
+        println("Formato non valido: " + rawData);
+      }
+    }
+  } catch (Exception e) {
+    println("Errore: " + e.getMessage());
+  }
 }
+
 void drawRadar() {
   pushMatrix();
-  translate(width/2, height-height*0.074); // moves the starting coordinats to new location
+  translate(width/2, height - 100);
+  
+  // Cerchi concentrici (40cm, 80cm, 120cm)
   noFill();
-  strokeWeight(2);
-  stroke(98, 245, 31);
-  // draws the arc lines
-  arc(0, 0, (width-width*0.0625), (width-width*0.0625), PI, TWO_PI);
-  arc(0, 0, (width-width*0.27), (width-width*0.27), PI, TWO_PI);
-  arc(0, 0, (width-width*0.479), (width-width*0.479), PI, TWO_PI);
-  arc(0, 0, (width-width*0.687), (width-width*0.687), PI, TWO_PI);
-  // draws the angle lines
-  line(-width/2, 0, width/2, 0);
-  line(0, 0, (-width/2)*cos(radians(30)), (-width/2)*sin(radians(30)));
-  line(0, 0, (-width/2)*cos(radians(60)), (-width/2)*sin(radians(60)));
-  line(0, 0, (-width/2)*cos(radians(90)), (-width/2)*sin(radians(90)));
-  line(0, 0, (-width/2)*cos(radians(120)), (-width/2)*sin(radians(120)));
-  line(0, 0, (-width/2)*cos(radians(150)), (-width/2)*sin(radians(150)));
-  line((-width/2)*cos(radians(30)), 0, width/2, 0);
-  popMatrix();
-}
-void drawObject() {
-  pushMatrix();
-  translate(width/2, height-height*0.074); // moves the starting coordinats to new location
-  strokeWeight(9);
-  stroke(255, 10, 10); // red color
-  pixsDistance = iDistance*((height-height*0.1666)*0.025); // covers the distance from the sensor from cm to pixels
-  // limiting the range to 40 cms
-  if (iDistance<40) {
-    // draws the object according to the angle and the distance
-    line(pixsDistance*cos(radians(iAngle)), -pixsDistance*sin(radians(iAngle)), (width-width*0.505)*cos(radians(iAngle)), -(width-width*0.505)*sin(radians(iAngle)));
+  stroke(98, 245, 31, 150);
+  strokeWeight(1);
+  for (int r = 1; r <= 3; r++) {
+    arc(0, 0, r*200, r*200, PI, TWO_PI);
+  }
+  
+  // Linee angolari (30° steps)
+  for (int a = 0; a <= 180; a += 30) {
+    float x = -350 * cos(radians(a));
+    float y = -350 * sin(radians(a));
+    stroke(98, 245, 31, 100);
+    line(0, 0, x, y);
   }
   popMatrix();
 }
+
+void drawHistory() {
+  // Disegna tutti i punti storici in modo sicuro
+  synchronized(objectHistory) {
+    noStroke();
+    for (PVector p : objectHistory) {
+      float alpha = map(p.dist(new PVector(width/2, height-100)), 0, 400, 255, 50);
+      fill(255, 100, 100, alpha);
+      ellipse(p.x, p.y, 5, 5);
+    }
+  }
+}
+
 void drawLine() {
   pushMatrix();
-  strokeWeight(9);
+  translate(width/2, height - 100);
   stroke(30, 250, 60);
-  translate(width/2, height-height*0.074); // moves the starting coordinats to new location
-  line(0, 0, (height-height*0.12)*cos(radians(iAngle)), -(height-height*0.12)*sin(radians(iAngle))); // draws the line according to the angle
+  strokeWeight(2);
+  line(0, 0, 200 * cos(radians(iAngle)), -200 * sin(radians(iAngle)));
   popMatrix();
 }
-void drawText() { // draws the texts on the screen
 
+void drawObject() {
+  if (iDistance <= 0 || iDistance > 400) return;
+  
   pushMatrix();
-  if (iDistance>40) {
-    noObject = "Out of Range";
-  } else {
-    noObject = "In Range";
-  }
-  fill(0, 0, 0);
+  translate(width/2, height - 100);
+  
+  // Calcolo posizione oggetto
+  float objSize = map(iDistance, 0, 400, 15, 5);
+  float objX = iDistance * 0.5 * cos(radians(iAngle));
+  float objY = -iDistance * 0.5 * sin(radians(iAngle));
+  
+  // Disegno oggetto
+  fill(255, 0, 0);
   noStroke();
-  rect(0, height-height*0.0648, width, height);
-  fill(98, 245, 31);
-  textSize(25);
-
-  text("10cm", width-width*0.3854, height-height*0.0833);
-  text("20cm", width-width*0.281, height-height*0.0833);
-  text("30cm", width-width*0.177, height-height*0.0833);
-  text("40cm", width-width*0.0729, height-height*0.0833);
-  textSize(40);
-  text("N_Tech ", width-width*0.875, height-height*0.0277);
-  text("Angle: " + iAngle +" ", width-width*0.48, height-height*0.0277);
-  text("Distance: ", width-width*0.26, height-height*0.0277);
-  if (iDistance<40) {
-    text("        " + iDistance +" cm", width-width*0.225, height-height*0.0277);
-  }
-  textSize(25);
-  fill(98, 245, 60);
-  translate((width-width*0.4994)+width/2*cos(radians(30)), (height-height*0.0907)-width/2*sin(radians(30)));
-  rotate(-radians(-60));
-  text("30", 0, 0);
-  resetMatrix();
-  translate((width-width*0.503)+width/2*cos(radians(60)), (height-height*0.0888)-width/2*sin(radians(60)));
-  rotate(-radians(-30));
-  text("60", 0, 0);
-  resetMatrix();
-  translate((width-width*0.507)+width/2*cos(radians(90)), (height-height*0.0833)-width/2*sin(radians(90)));
-  rotate(radians(0));
-  text("90", 0, 0);
-  resetMatrix();
-  translate(width-width*0.513+width/2*cos(radians(120)), (height-height*0.07129)-width/2*sin(radians(120)));
-  rotate(radians(-30));
-  text("120", 0, 0);
-  resetMatrix();
-  translate((width-width*0.5104)+width/2*cos(radians(150)), (height-height*0.0574)-width/2*sin(radians(150)));
-  rotate(radians(-60));
-  text("150", 0, 0);
+  ellipse(objX, objY, objSize, objSize);
   popMatrix();
+}
+
+void drawText() {
+  // Scala distanze
+  fill(98, 245, 31);
+  textSize(14);
+  text("100cm", width/2 - 100, height - 80);
+  text("200cm", width/2 - 200, height - 80);
+  text("0cm", width/2, height - 80);
+  text("100cm", width/2 + 100, height - 80);
+  text("200cm", width/2 + 200, height - 80);
+  
+  // Indicatori angolo
+  text("0°", width/2 - 220, height - 100);
+  text("180°", width/2 + 200, height - 100);
+  text("90°", width/2, height - 250);
+}
+
+void keyPressed() {
+  if (key == 'c') {
+    synchronized(objectHistory) {
+      objectHistory.clear(); // Pulisce la traccia con il tasto 'c'
+    }
+  }
 }
