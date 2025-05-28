@@ -42,17 +42,42 @@ void disegnaGriglia() {
   stroke(200);                                               // grigio
   strokeWeight(1);                                           // spessore in px
    
-  // Linee orizzontali
-  for (int i = 0; i < 10; i++) {
+// Linee orizzontali ogni 50 unità (0, 50, 100, 150, 200, 250)
+  for (int yValue = 250; yValue >= 0; yValue -= 50) {
+  float y = map(yValue, 0, 250, 50, height - 50);
+    line(50, y, width - 50, y);  // Disegna la linea
     
-    float y = map(i, 0, 9, height - 50, 50);                 // Calcola l'area dove disegnare le righe vreticali (da 50px dal fondo a 50px dall'alto)
-    line(50, y, width - 50, y);                              // Disegna le linea
+    // Opzionale: aggiungi etichette testuali
+    fill(100);
+    textAlign(RIGHT, CENTER);
+    text(yValue, 45, y);  // Mostra il valore (es. "50") a sinistra della linea
   }
   
   
 }
 
+void lineaGrafico() {
+  stroke(243, 255, 166);                                     // Colore per la linea
+  strokeWeight(2);                                           // Spessore linea (2px)
+  noFill();
+  beginShape();
+  for (int i = 0; i < values.length; i++) {
+    
+    float x = map(i, 0, values.length - 1, 50, width - 50);
+    
+    // Mappa il valore nell'intervallo di visualizzazione
+    float y = map(values[i], 0, 250, 50, height - 50);       // impostazione del range di valori (0 - 250)  
+    vertex(x, y);
+  }
+  endShape();
+}
+
+
 void draw() {
   background(0);
-  
+  disegnaGriglia();
+  lineaGrafico();
+  fill(255);
+  textAlign(RIGHT, CENTER);
+  text("Profondità attuale: " + values[(index - 1 + values.length) % values.length], width - 20, 30);  // Mostra il valore corrente
 }
