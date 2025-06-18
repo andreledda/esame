@@ -4,7 +4,8 @@
   - GPS
   - Timer
   - Simulazione di Radio
-  - ~~Generatore Eolico~~
+  - Generatore Eolico
+  - IALA
 
 _(i cancellati sono ancora da fare)_
 
